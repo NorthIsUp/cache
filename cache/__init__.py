@@ -23,7 +23,6 @@ import logging
 from types import NoneType
 
 from werkzeug import import_string
-from flask import request, current_app
 
 
 logger = logging.getLogger(__name__)
@@ -57,23 +56,8 @@ class Cache(object):
     This class is used to control the cache objects.
     """
 
-    def __init__(self, app=None, with_jinja2_ext=True, config=None):
-        self.with_jinja2_ext = with_jinja2_ext
+    def __init__(self, config=None):
         self.config = config
-
-        self.app = app
-        if app is not None:
-            self.init_app(app, config)
-
-    def init_app(self, app, config=None):
-        "This is used to initialize cache with your app object"
-        if not isinstance(config, (NoneType, dict)):
-            raise ValueError("`config` must be an instance of dict or NoneType")
-
-        if config is None:
-            config = self.config
-        if config is None:
-            config = app.config
 
         config.setdefault('CACHE_DEFAULT_TIMEOUT', 300)
         config.setdefault('CACHE_THRESHOLD', 500)
@@ -85,18 +69,11 @@ class Cache(object):
         config.setdefault('CACHE_TYPE', 'null')
 
         if config['CACHE_TYPE'] == 'null':
-            warnings.warn("Flask-Cache: CACHE_TYPE is set to null, "
-                          "caching is effectively disabled.")
+            warnings.warn("Flask-Cache: CACHE_TYPE is set to null, caching is effectively disabled.")
 
-        if self.with_jinja2_ext:
-            from .jinja2ext import CacheExtension, JINJA_CACHE_ATTR_NAME
+        self._set_cache(config)
 
-            setattr(app.jinja_env, JINJA_CACHE_ATTR_NAME, self)
-            app.jinja_env.add_extension(CacheExtension)
-
-        self._set_cache(app, config)
-
-    def _set_cache(self, app, config):
+    def _set_cache(self, config):
         import_me = config['CACHE_TYPE']
         if '.' not in import_me:
             import backends
@@ -104,8 +81,7 @@ class Cache(object):
             try:
                 cache_obj = getattr(backends, import_me)
             except AttributeError:
-                raise ImportError("%s is not a valid FlaskCache backend" % (
-                                  import_me))
+                raise ImportError("%s is not a valid FlaskCache backend" % (import_me))
         else:
             cache_obj = import_string(import_me)
 
@@ -115,17 +91,7 @@ class Cache(object):
         if config['CACHE_OPTIONS']:
             cache_options.update(config['CACHE_OPTIONS'])
 
-        if not hasattr(app, 'extensions'):
-            app.extensions = {}
-
-        app.extensions.setdefault('cache', {})
-        app.extensions['cache'][self] = cache_obj(
-                app, config, cache_args, cache_options)
-
-    @property
-    def cache(self):
-        app = self.app or current_app
-        return app.extensions['cache'][self]
+        self.cache = cache_obj(config, cache_args, cache_options)
 
     def get(self, *args, **kwargs):
         "Proxy function for internal cache object."
@@ -220,8 +186,6 @@ class Cache(object):
                     cache_key = decorated_function.make_cache_key(*args, **kwargs)
                     rv = self.cache.get(cache_key)
                 except Exception:
-                    if current_app.debug:
-                        raise
                     logger.exception("Exception possibly due to cache backend.")
                     return f(*args, **kwargs)
 
@@ -231,8 +195,6 @@ class Cache(object):
                         self.cache.set(cache_key, rv,
                                    timeout=decorated_function.cache_timeout)
                     except Exception:
-                        if current_app.debug:
-                            raise
                         logger.exception("Exception possibly due to cache backend.")
                         return f(*args, **kwargs)
                 return rv
@@ -240,8 +202,6 @@ class Cache(object):
             def make_cache_key(*args, **kwargs):
                 if callable(key_prefix):
                     cache_key = key_prefix()
-                elif '%s' in key_prefix:
-                    cache_key = key_prefix % request.path
                 else:
                     cache_key = key_prefix
 
@@ -424,8 +384,6 @@ class Cache(object):
                     cache_key = decorated_function.make_cache_key(f, *args, **kwargs)
                     rv = self.cache.get(cache_key)
                 except Exception:
-                    if current_app.debug:
-                        raise
                     logger.exception("Exception possibly due to cache backend.")
                     return f(*args, **kwargs)
 
@@ -435,8 +393,6 @@ class Cache(object):
                         self.cache.set(cache_key, rv,
                                    timeout=decorated_function.cache_timeout)
                     except Exception:
-                        if current_app.debug:
-                            raise
                         logger.exception("Exception possibly due to cache backend.")
                         return f(*args, **kwargs)
                 return rv
@@ -531,8 +487,6 @@ class Cache(object):
                 cache_key = f.make_cache_key(f.uncached, *args, **kwargs)
                 self.cache.delete(cache_key)
         except Exception:
-            if current_app.debug:
-                raise
             logger.exception("Exception possibly due to cache backend.")
 
     def delete_memoized_verhash(self, f, *args):
@@ -557,6 +511,4 @@ class Cache(object):
             version_key = self._memvname(_fname)
             self.cache.delete(version_key)
         except Exception:
-            if current_app.debug:
-                raise
             logger.exception("Exception possibly due to cache backend.")

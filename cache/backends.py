@@ -20,30 +20,30 @@ class SASLMemcachedCache(MemcachedCache):
         self.key_prefix = key_prefix
 
 
-def null(app, config, args, kwargs):
+def null(config, args, kwargs):
     return NullCache()
 
-def simple(app, config, args, kwargs):
+def simple(config, args, kwargs):
     kwargs.update(dict(threshold=config['CACHE_THRESHOLD']))
     return SimpleCache(*args, **kwargs)
 
-def memcached(app, config, args, kwargs):
+def memcached(config, args, kwargs):
     args.append(config['CACHE_MEMCACHED_SERVERS'])
     kwargs.update(dict(key_prefix=config['CACHE_KEY_PREFIX']))
     return MemcachedCache(*args, **kwargs)
 
-def saslmemcached(app, config, args, kwargs):
+def saslmemcached(config, args, kwargs):
     args.append(config['CACHE_MEMCACHED_SERVERS'])
     kwargs.update(dict(username=config['CACHE_MEMCACHED_USERNAME'],
                        password=config['CACHE_MEMCACHED_PASSWORD'],
                        key_prefix=config['CACHE_KEY_PREFIX']))
     return SASLMemcachedCache(*args, **kwargs)
 
-def gaememcached(app, config, args, kwargs):
+def gaememcached(config, args, kwargs):
     kwargs.update(dict(key_prefix=config['CACHE_KEY_PREFIX']))
     return GAEMemcachedCache(*args, **kwargs)
 
-def filesystem(app, config, args, kwargs):
+def filesystem(config, args, kwargs):
     args.append(config['CACHE_DIR'])
     kwargs.update(dict(threshold=config['CACHE_THRESHOLD']))
     return FileSystemCache(*args, **kwargs)
@@ -55,7 +55,7 @@ try:
 except ImportError:
     pass
 else:
-    def redis(app, config, args, kwargs):
+    def redis(config, args, kwargs):
         kwargs.update(dict(
             host=config.get('CACHE_REDIS_HOST', 'localhost'),
             port=config.get('CACHE_REDIS_PORT', 6379),
@@ -154,7 +154,7 @@ class SpreadSASLMemcachedCache(SASLMemcachedCache):
             return None
         return pickle.loads(serialized)
 
-def spreadsaslmemcachedcache(app, config, args, kwargs):
+def spreadsaslmemcachedcache(config, args, kwargs):
 
     args.append(config['CACHE_MEMCACHED_SERVERS'])
     kwargs.update(dict(username=config.get('CACHE_MEMCACHED_USERNAME'),
