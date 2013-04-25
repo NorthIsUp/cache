@@ -12,11 +12,11 @@ from setuptools import setup
 setup(
     name='Cache',
     version='0.11.1',
-    url='http://github.com/thadeusb/flask-cache',
+    url='http://github.com/NorthIsUp/cache',
     license='BSD',
     author='Thadeus Burgess',
     author_email='thadeusb@thadeusb.com',
-    description='Adds cache support to your Flask application',
+    description='Adds cache support to your disqus-service application',
     long_description=__doc__,
     packages=[
         'cache',
