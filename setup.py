@@ -10,7 +10,7 @@ Adds cache support to your Flask application
 from setuptools import setup
 
 setup(
-    name='Cache',
+    name='DisqusServiceCache',
     version='0.11.1',
     url='http://github.com/NorthIsUp/cache',
     license='BSD',
