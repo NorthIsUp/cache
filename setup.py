@@ -11,7 +11,7 @@ from setuptools import setup
 
 setup(
     name='DisqusServiceCache',
-    version='0.11.1',
+    version='0.11.4',
     url='http://github.com/NorthIsUp/cache',
     license='BSD',
     author='Thadeus Burgess',

@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details
 """
 
-__version__ = '0.11.1'
+__version__ = '0.11.2'
 __versionfull__ = __version__
 
 import uuid
@@ -41,7 +41,7 @@ def function_namespace(f, args=None):
             return '%s.%s.%s' % (f.__module__, args[0].__name__, f.__name__)
 
     if hasattr(f, 'im_func'):
-        return '%s.%s.%s' % (f.__module__, f.im_class.__name__, f.__name__)
+        return '%s.%s.%s' % (f.__module__, f.__self__.__class__.__name__, f.__name__)
     elif hasattr(f, '__class__'):
         return '%s.%s.%s' % (f.__module__, f.__class__.__name__, f.__name__)
     else:
@@ -49,9 +49,10 @@ def function_namespace(f, args=None):
 
 
 #: Cache Object
-################
+#
 
 class Cache(object):
+
     """
     This class is used to control the cache objects.
     """
@@ -76,7 +77,7 @@ class Cache(object):
     def _set_cache(self, config):
         import_me = config['CACHE_TYPE']
         if '.' not in import_me:
-            import backends
+            from . import backends
 
             try:
                 cache_obj = getattr(backends, import_me)
@@ -121,7 +122,7 @@ class Cache(object):
         "Proxy function for internal cache object."
         self.cache.set_many(*args, **kwargs)
 
-    def cached(self, timeout=None, key_prefix='view/%s', unless=None):
+    def cached(self, timeout=None, key_prefix='{f}', unless=None):
         """
         Decorator. Use this to cache a function. By default the cache key
         is `view/request.path`. You are able to use this decorator with any
@@ -193,7 +194,7 @@ class Cache(object):
                     rv = f(*args, **kwargs)
                     try:
                         self.cache.set(cache_key, rv,
-                                   timeout=decorated_function.cache_timeout)
+                                       timeout=decorated_function.cache_timeout)
                     except Exception:
                         logger.exception("Exception possibly due to cache backend.")
                         return f(*args, **kwargs)
@@ -201,13 +202,13 @@ class Cache(object):
 
             def make_cache_key(*args, **kwargs):
                 if callable(key_prefix):
-                    cache_key = key_prefix()
+                    cache_key = key_prefix(f, *args, **kwargs)
                 else:
                     cache_key = key_prefix
 
                 cache_key = cache_key.encode('utf-8')
 
-                return cache_key
+                return cache_key.format(f=f.__name__, *args, **kwargs)
 
             decorated_function.uncached = f
             decorated_function.cache_timeout = timeout
@@ -287,8 +288,8 @@ class Cache(object):
             elif arg_num < len(args):
                 arg = args[arg_num]
                 arg_num += 1
-            elif abs(i-args_len) <= len(argspec.defaults):
-                arg = argspec.defaults[i-args_len]
+            elif abs(i - args_len) <= len(argspec.defaults):
+                arg = argspec.defaults[i - args_len]
                 arg_num += 1
             else:
                 arg = None
@@ -391,7 +392,7 @@ class Cache(object):
                     rv = f(*args, **kwargs)
                     try:
                         self.cache.set(cache_key, rv,
-                                   timeout=decorated_function.cache_timeout)
+                                       timeout=decorated_function.cache_timeout)
                     except Exception:
                         logger.exception("Exception possibly due to cache backend.")
                         return f(*args, **kwargs)
@@ -474,7 +475,7 @@ class Cache(object):
         """
         if not callable(f):
             raise exceptions.DeprecationWarning("Deleting messages by relative name is no longer"
-                          " reliable, please switch to a function reference")
+                                                " reliable, please switch to a function reference")
 
         _fname = function_namespace(f, args)
 
@@ -503,7 +504,7 @@ class Cache(object):
         """
         if not callable(f):
             raise exceptions.DeprecationWarning("Deleting messages by relative name is no longer"
-                          " reliable, please use a function reference")
+                                                " reliable, please use a function reference")
 
         _fname = function_namespace(f, args)
 
